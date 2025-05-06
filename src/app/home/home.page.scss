@@ -25,3 +25,9 @@
 #container a {
   text-decoration: none;
 }
+
+#game {
+  margin: 0 auto;         // centra horizontalmente
+  display: block;
+  max-width: 1080px;      // opcional: asegura que no se expanda más
+}
