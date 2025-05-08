@@ -12,6 +12,7 @@ export class RankingScene extends Phaser.Scene {
 
   preload() {
     this.load.image('background', 'assets/space.background.png');
+    this.load.audio('click', 'assets/sounds/clickSound.mp3');
   }
 
   create() {
@@ -52,7 +53,14 @@ export class RankingScene extends Phaser.Scene {
 
     // 7. Acción al hacer clic en el botón regresar
     backButton.on('pointerdown', () => {
+      this.click();
       this.scene.start('MenuScene'); // O vuelve a la escena de inicio
     });
   }
+  click() {
+    // Reproducir la música de fondo
+    this.sound.play('click', {
+        volume: 0.5, // Ajusta el volumen entre 0 (silencio) y 1 (máximo volumen)
+    });
+}
 }

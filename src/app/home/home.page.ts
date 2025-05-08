@@ -3,6 +3,7 @@ import * as Phaser from 'phaser';
 import { Scene1 } from './scenes/Scene1';
 import { MenuScene } from './scenes/MenuScene'; // Importa tu escena de menú
 import { RankingScene } from './scenes/RankingScene';
+import { ControlScene } from './scenes/ControlScene';
 
 @Component({
   selector: 'app-home',
@@ -17,7 +18,7 @@ export class HomePage {
     width: Math.min(window.innerWidth, 1080),
     height: window.innerHeight,
     parent: 'game',
-    scene: [MenuScene, Scene1, RankingScene],
+    scene: [MenuScene, Scene1, RankingScene, ControlScene],
     physics: {
       default: 'arcade',
       arcade: {

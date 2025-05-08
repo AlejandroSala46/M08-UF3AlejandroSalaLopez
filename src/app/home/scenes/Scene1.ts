@@ -1,5 +1,19 @@
 import * as Phaser from "phaser";
+/* NOTA: 
 
+Simplemente comentar que sinceramente creo que esta ha sido la practica que mas he disfrutado de todo el curso, me ha parecido super divertida y entretenida. 
+Me ha dado rabia que sea en la recta final donde no le he podido dar mas tiempo... 
+Me hubiese encantado meter powerups aleatorios que te hiciesen distintos boosts (tipo disparo triple o mas velocidad), meter mas enemigos con diferentes ataques y movimientos
+o incluso meter algun "boss". 
+
+Sin embargo, como he comentado, me ha encantado y me he viciado bastante al final al juego (aun asi no he conseguido mucha puntuacion).
+
+Como supongo que ya habras visto, me he ido un poco de la idea original, que era hacer un juego de asteroides, pero me parecia un reto mas divertido hacer un juego a lo
+space invaders (aunque hacer un sistema donde los asteroides reboten por las paredes de la pantalla tambien me llamaba bastante). 
+
+Simplemente queria hacer esta nota a modo de: gracias por hacer una practica tan entretenida y curiosa. 
+
+*/
 
 export class Scene1 extends Phaser.Scene {
     playerShip!: Phaser.Physics.Arcade.Sprite;
@@ -22,6 +36,8 @@ export class Scene1 extends Phaser.Scene {
 
     enemySpawnEvent!: Phaser.Time.TimerEvent;
 
+    gamePaused: Boolean = false;
+
     // Arreglo para almacenar enemigos
     enemies: Phaser.Physics.Arcade.Sprite[] = [];
 
@@ -29,7 +45,7 @@ export class Scene1 extends Phaser.Scene {
         super({ key: 'Scene1' });
     }
 
-    preload() {
+    preload() { 
         this.load.spritesheet('playerShip', 'assets/Ship1/Ship1.png', { frameWidth: 50, frameHeight: 50 });
         this.load.spritesheet('enemyShip', 'assets/Ship3/Ship3.png', { frameWidth: 200, frameHeight: 200 });
         this.load.spritesheet('playerBullet', 'assets/Shots/Shot1/shot1_asset.png', { frameWidth: 40, frameHeight: 40 })
@@ -51,7 +67,7 @@ export class Scene1 extends Phaser.Scene {
 
     create() {
 
-        var screenWidth = Math.min(innerWidth, 1080);
+        var screenWidth = Math.min(innerWidth, 1080); //Como maximo la pantalla tiene que ser de 1080 de ancho
 
         this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'background').setDisplaySize(this.cameras.main.width, this.cameras.main.height);
 
@@ -70,10 +86,11 @@ export class Scene1 extends Phaser.Scene {
         this.physics.world.debugGraphic.lineStyle(1, 0x00ff00, 1); // Estilo de la línea (color y grosor)
         this.physics.world.debugGraphic.strokeRect(0, 0, 200, 200); // Dibuja la hitbox*/
 
+        //Animacion explosion
         this.anims.create({
             key: 'explode',
             frames: [
-                { key: 'enemyExplosion1', frame: 'enemyExplosion1' }, // Debes añadir la propiedad 'frame'
+                { key: 'enemyExplosion1', frame: 'enemyExplosion1' }, 
                 { key: 'enemyExplosion2', frame: 'enemyExplosion2' },
                 { key: 'enemyExplosion3', frame: 'enemyExplosion3' },
                 { key: 'enemyExplosion4', frame: 'enemyExplosion4' },
@@ -83,17 +100,20 @@ export class Scene1 extends Phaser.Scene {
             hideOnComplete: true
         });
 
+        //Activamos el input de teclado
         this.input.keyboard.enabled = true;
+
         // PC: teclado
         this.wasdKeys = this.input.keyboard.addKeys({
             up: 'W',
             down: 'S',
             left: 'A',
             right: 'D',
-            space: 'space'
+            space: 'space',
+            pause: Phaser.Input.Keyboard.KeyCodes.ESC
         });
 
-
+        
         this.scoreText = this.add.text(screenWidth / 2, 16, this.score.toString(), { fontSize: '40px', fill: '#FFFFFF' })
 
         // Crear el temporizador para generar enemigos cada segundo
@@ -144,24 +164,28 @@ export class Scene1 extends Phaser.Scene {
 
     override update(time: number, delta: number) {
         var speed = 300;
-
-
-
+        if (this.gamePaused) return;
 
         // Teclado WASD
         this.playerShip.setVelocity(0);
 
         if (this.wasdKeys) {
+            //Movimiento
             if (this.wasdKeys.left.isDown) this.playerShip.setVelocityX(-speed);
             else if (this.wasdKeys.right.isDown) this.playerShip.setVelocityX(speed);
 
             if (this.wasdKeys.up.isDown) this.playerShip.setVelocityY(-speed);
             else if (this.wasdKeys.down.isDown) this.playerShip.setVelocityY(speed);
-
+            
+            //Disparar
             if (this.wasdKeys.space.isDown && time - this.lastShotTime > this.shootCooldownPlayer) {
                 console.log('disparo')
                 this.shoot(90, 'playerBullet', this.playerShip);
                 this.lastShotTime = time;
+            }
+            //Pausa
+            if (this.wasdKeys.pause.isDown){
+                this.gamePause();
             }
 
         }
@@ -179,6 +203,7 @@ export class Scene1 extends Phaser.Scene {
             }
         })
 
+        //Verifica si la bala del jugador ha salido de pantalla
         this.playerBullets.forEach(playerBullet => {
             if (playerBullet.y < 0) {
                 playerBullet.destroy();
@@ -186,6 +211,16 @@ export class Scene1 extends Phaser.Scene {
             }
         })
 
+        //Verifica si la bala de los enemigos ha salido de pantalla
+        this.enemyBullets.forEach(enemyBullet => {
+            if (enemyBullet.y > innerHeight) {
+                enemyBullet.destroy();
+                this.enemyBullets.splice(this.enemyBullets.indexOf(enemyBullet), 1); // Elimina el elemento en el índice encontrado
+            }
+           
+        })
+
+        //Cada 10 segundos bajamos el delay entre spawn de enemigos medio segundo, hasta que spawneen cada segundo
         if (time - this.lastDelayUpdate > 10000 && this.enemSpawnDelay > 1000) {
             this.enemSpawnDelay -= 500;
             this.enemySpawnEvent.reset({ delay: this.enemSpawnDelay, callback: this.createEnemy, callbackScope: this, loop: true });
@@ -204,8 +239,8 @@ export class Scene1 extends Phaser.Scene {
         var posX: number = ship.x - 7;
         var posY: number = ship.y;
 
-        if (angle === 90) velocity = -500;
-        else if (angle === 270) velocity = 300;
+        if (angle === 90) velocity = -500; //Si el disparo es del jugador
+        else if (angle === 270) velocity = 300; //Si el disparo es del enemigo
 
         const bullet = this.physics.add.sprite(
             posX,
@@ -219,7 +254,7 @@ export class Scene1 extends Phaser.Scene {
 
         if (bulletSprite === 'playerBullet') {
             // Cambiar el tamaño de la hitbox de la bala
-            bullet.setSize(10, 20); // Ajusta el tamaño de la hitbox de la bala (ancho, alto)
+            bullet.setSize(10, 20); 
 
             this.sound.play('shot', {
                 volume: 0.1,
@@ -227,7 +262,7 @@ export class Scene1 extends Phaser.Scene {
 
             this.playerBullets.push(bullet);
         } else if (bulletSprite === 'enemyBullet') {
-            bullet.setSize(15, 22)
+            bullet.setSize(15, 22) 
             bullet.setOffset(25, 3); // Ajusta el desplazamiento de la hitbox si es necesario
             this.enemyBullets.push(bullet);
         }
@@ -247,9 +282,9 @@ export class Scene1 extends Phaser.Scene {
             .setVelocityY(100); // Velocidad de movimiento del enemigo hacia abajo
 
         // Cambiar el tamaño de la hitbox del enemigo
-        enemy.setSize(60, 100); // Ajusta el tamaño de la hitbox (ancho, alto)
+        enemy.setSize(60, 100); //Es mas grande de lo que deberia para "facilitar" las cosas, porque si no seria muy dificil el juego
 
-        // Agregar el enemigo al arreglo de enemigos
+        // Agregar el enemigo al array de enemigos
         this.enemies.push(enemy);
         this.lastEnemyShootTimes.set(enemy, 0);
 
@@ -261,12 +296,17 @@ export class Scene1 extends Phaser.Scene {
 
     handleBulletEnemyCollision(bullet: Phaser.Physics.Arcade.Sprite, enemy: Phaser.Physics.Arcade.Sprite) {
         console.log('Colisión entre bala y enemigo');
+
+        //Destruimos la bala
         bullet.destroy();
 
+        //Destruimos el enemigo
         enemy.destroy();
-
+        
+        //Animacion de explosion
         this.shipExplosion(enemy);
 
+        //Eliminamos al enemigo del array
         this.enemies.splice(this.enemies.indexOf(enemy), 1);
 
         this.score += 10; // Aumentar la puntuación
@@ -275,10 +315,13 @@ export class Scene1 extends Phaser.Scene {
 
     gameOver() {
 
+        //Metodo para reiniciar todas las variables (con .stop no se limpian todas)
         this.shoutdown();
 
+        //Animacion de explosion
         this.shipExplosion(this.playerShip)
 
+        //Nueva musica de fondo
         this.backgroundMusic = this.sound.add('gameOverMusic', {
             loop: true,
             volume: 0.5,
@@ -398,6 +441,8 @@ export class Scene1 extends Phaser.Scene {
 
                 this.backgroundMusic?.destroy();
 
+                this.score = 0;
+
                 this.scene.stop();
                 // Volver a menú
                 this.scene.start('MenuScene');
@@ -405,6 +450,71 @@ export class Scene1 extends Phaser.Scene {
         });
     }
 
+    gamePause() {
+        // Pausar lógica de juego
+        this.physics.pause();
+        this.enemySpawnEvent.paused = true;
+        this.gamePaused = true;
+
+        // Oscurecer el fondo con un rectángulo semitransparente
+        const overlay = this.add.rectangle(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            this.cameras.main.width,
+            this.cameras.main.height,
+            0x000000,
+            0.6
+        ).setDepth(1000);
+    
+        // Crear texto "Pausa"
+        const pauseText = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY - 100,
+            'Pausa',
+            { fontSize: '48px', fill: '#ffffff' }
+        ).setOrigin(0.5).setDepth(1001);
+    
+        // Botón "Reiniciar"
+        const restartButton = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            'Reiniciar',
+            { fontSize: '32px', fill: '#ffffff', backgroundColor: '#333' }
+        ).setOrigin(0.5).setInteractive().setDepth(1001);
+    
+        restartButton.on('pointerdown', () => {
+            console.log('pulsando restart')
+            this.cleanupPauseUI([overlay, pauseText, restartButton, exitButton]);
+            this.gamePaused = false;
+            this.physics.resume();
+            this.enemySpawnEvent.paused = false;
+            
+        });
+    
+        // Botón "Salir"
+        const exitButton = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY + 80,
+            'Salir',
+            { fontSize: '32px', fill: '#ffffff', backgroundColor: '#333' }
+        ).setOrigin(0.5).setInteractive().setDepth(1001);
+    
+        exitButton.on('pointerdown', () => {
+            this.cleanupPauseUI([overlay, pauseText, restartButton, exitButton]);
+            this.gamePaused = false;
+            this.physics.resume();
+            this.enemySpawnEvent.paused = false;
+            this.gameOver();
+        });
+
+        
+    }
+
+    cleanupPauseUI(elements: Phaser.GameObjects.GameObject[]) {
+        elements.forEach(el => el.destroy());  
+    }
+    
+    //Animacion de explosion
     shipExplosion(ship: Phaser.Physics.Arcade.Sprite) {
         const explosion = this.add.sprite(ship.x, ship.y, 'enemyExplosion1');
         explosion.setOrigin(0.5, 0.5);
@@ -416,9 +526,9 @@ export class Scene1 extends Phaser.Scene {
 
     }
 
+    // Eliminar todos los enemigos y balas
     shoutdown() {
-        // Eliminar todos los enemigos y balas
-        // 1. Pausar la escena actual
+        
         this.input.keyboard.enabled = false;
         this.input.keyboard.removeAllListeners();
         this.input.keyboard.clearCaptures();
@@ -434,6 +544,9 @@ export class Scene1 extends Phaser.Scene {
         this.playerBullets = [];
         this.enemyBullets = [];
         this.lastEnemyShootTimes.clear();
+        this.enemSpawnDelay = 3000;
+        this.enemySpawnEvent.destroy();
+        
     }
 
 
